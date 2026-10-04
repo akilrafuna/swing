@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<title>Larp Apps</title>
+<link rel="icon" type="image/png" href="nebula/icon-192.png">
+<style>
+  :root{--bg:#0b0b0d;--card:#18181b;--fg:#fff;--fg2:#9b9ba5;--sep:rgba(255,255,255,.08);--accent:#0a84ff;color-scheme:dark}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f2f2f7;--card:#fff;--fg:#000;--fg2:#6c6c72;--sep:rgba(0,0,0,.08);--accent:#007aff;color-scheme:light}}
+  :root[data-theme="dark"]{--bg:#0b0b0d;--card:#18181b;--fg:#fff;--fg2:#9b9ba5;--sep:rgba(255,255,255,.08);--accent:#0a84ff;color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 40px) 16px calc(env(safe-area-inset-bottom) + 40px)}
+  h1{font-size:34px;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--fg2);margin:0 0 28px}
+  .apps{display:grid;gap:12px}
+  .app{display:flex;align-items:center;gap:16px;padding:16px;border-radius:20px;background:var(--card);color:inherit;text-decoration:none;transition:transform .15s}
+  .app:active{transform:scale(.98)}
+  .app img{width:64px;height:64px;border-radius:15px;flex:none}
+  .app b{display:block;font-size:19px}
+  .app span{color:var(--fg2);font-size:15px}
+  .app .open{margin-left:auto;padding:7px 16px;border-radius:16px;background:var(--accent);color:#fff;font-weight:600;font-size:15px;flex:none}
+  h2{font-size:20px;margin:36px 0 12px}
+  ol{margin:0;padding:0;list-style:none;counter-reset:s;background:var(--card);border-radius:16px}
+  li{counter-increment:s;display:flex;gap:12px;padding:14px 16px;align-items:flex-start}
+  li+li{border-top:.5px solid var(--sep)}
+  li::before{content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;margin-top:1px}
+  .note{color:var(--fg2);font-size:13px;margin-top:28px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>Larp Apps</h1>
+  <p class="sub">Two iPhone web apps for pretend money. Everything stays on your phone.</p>
+  <div class="apps">
+    <a class="app" href="nebula/"><img src="nebula/icon-180.png" alt=""><div><b>Nebula</b><span>Crypto wallet</span></div><span class="open">Open</span></a>
+    <a class="app" href="pocket/"><img src="pocket/icon-180.png" alt=""><div><b>Pocket</b><span>Card wallet</span></div><span class="open">Open</span></a>
+  </div>
+  <h2>Put them on your Home Screen</h2>
+  <ol>
+    <li>Open this page in Safari on your iPhone.</li>
+    <li>Tap Open on an app above.</li>
+    <li>Tap the Share button, then Add to Home Screen.</li>
+    <li>Launch it from the Home Screen. It runs full screen, like a real app.</li>
+    <li>Repeat for the other app.</li>
+  </ol>
+  <p class="note">Balances, cards and transactions are simulated. Nothing here is real money or a real payment card.</p>
+</main>
+</body>
+</html>
