@@ -18,7 +18,7 @@
 .sheet-root{--group:var(--group-sheet)}
 
 /* ---------- wallet ---------- */
-.wallet{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
+.wallet{position:absolute;inset:0;z-index:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(30px + env(safe-area-inset-bottom))}
 .sel .wallet{overflow:hidden}
 .w-head{display:flex;align-items:flex-end;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 14px) 16px 14px;transition:opacity .3s}
 .w-head h1{font-size:34px;font-weight:700;letter-spacing:.01em}
@@ -145,3 +145,9 @@
 .nfc-anim svg:nth-child(2){animation:ping 1.5s ease-out infinite}
 @keyframes ping{from{transform:scale(1);opacity:.7}to{transform:scale(1.7);opacity:0}}
 .pay-done .ok-circle{width:88px;height:88px;color:#0a84ff}
+
+/* ---------- randomize ---------- */
+.rz-hero{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 16px 24px;text-align:center}
+.rz-tier{padding:4px 12px;border-radius:12px;background:linear-gradient(135deg,#ffd60a,#ff9f0a);color:#1c1c1e;font-size:13px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.rz-hero b{font-size:34px;font-weight:700;margin-top:8px;font-variant-numeric:tabular-nums}
+.rz-hero small{color:var(--fg2);font-size:14px;line-height:1.4;max-width:280px}

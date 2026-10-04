@@ -142,7 +142,7 @@ function totals() {
 }
 const sortActivity = () => S.activity.sort((a, b) => b.ts - a.ts);
 
-const lock = createLock({ app: 'nebula', name: 'Nebula', logo: LOGO, payLabel: 'Require Face ID to Send' });
+const lock = createLock({ app: 'nebula', name: 'Nebula', logo: LOGO, payLabel: 'Require Face ID to Send', purpose: 'sends' });
 const refreshers = new Set();
 const pages = new Set();
 
@@ -194,7 +194,7 @@ const DEFS = `<svg class="defs" aria-hidden="true"><defs>
 </defs></svg>`;
 
 function buildShell() {
-  $('#app').innerHTML = `${DEFS}
+  $('#app').innerHTML = `${DEFS}<div class="status-cover"></div>
     <div class="views">${TABS.map(([id]) => `<section class="view ${id === tab ? 'active' : ''}" data-view="${id}"></section>`).join('')}</div>
     <nav class="tabbar">${TABS.map(([id, icon, label]) => `<button class="tab ${id === tab ? 'on' : ''}" data-act="tab" data-id="${id}" aria-label="${label}">${I[icon]}</button>`).join('')}</nav>`;
   setupPullToRefresh(view('home'));
@@ -1034,7 +1034,7 @@ function openSettings() {
         <label class="row"><span class="label">Username</span><input data-f="handle" value="${esc(a.handle)}" placeholder="@username" maxlength="20" autocapitalize="off" spellcheck="false"></label>
       </div>
       <div class="group-title">Security</div>
-      <div class="group"><button class="row" data-sec><span class="row-ic" style="background:#30d158">${FACE_ID}</span><span class="label">Face ID &amp; Passcode</span><span class="value">${lock.modeLabel()}</span>${I.chev}</button></div>
+      <div class="group"><button class="row" data-sec><span class="row-ic" style="background:#30d158">${FACE_ID}</span><span class="label">Face ID</span><span class="value">${lock.modeLabel()}</span>${I.chev}</button></div>
       <div class="group-title">Display</div>
       <div class="group">
         <label class="row"><span class="label">Hide Balances</span>${switchHTML('data-s="hideBalance"', S.settings.hideBalance)}</label>
@@ -1132,4 +1132,5 @@ await loadImages('nebula:');
 buildShell();
 refreshAll();
 setInterval(() => { if (S.settings.live && !document.hidden) tick(); }, 3000);
+lock.offer();
 registerSW('../sw.js');

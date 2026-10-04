@@ -269,46 +269,24 @@ export function push(html, { onClose } = {}) {
   return api;
 }
 
-/* ---------- passcode keypad ---------- */
-export function passcodePad(title, check) {
+/* ---------- iOS-style alert ---------- */
+// An action's onClick runs inside the tap itself, so it can start a WebAuthn (Face ID) prompt.
+export function alertBox({ title, message = '', actions }) {
   return new Promise(resolve => {
-    const L = ['', 'ABC', 'DEF', 'GHI', 'JKL', 'MNO', 'PQRS', 'TUV', 'WXYZ'];
-    const el = document.createElement('div');
-    el.className = 'pc-root';
-    el.innerHTML = `<div class="pc-title">${esc(title)}</div><div class="pc-dots">${'<i></i>'.repeat(6)}</div>
-      <div class="pc-grid">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button class="pc-key" data-k="${n}"><b>${n}</b><small>${L[n - 1]}</small></button>`).join('')}<span></span><button class="pc-key" data-k="0"><b>0</b></button><span></span></div>
-      <div class="pc-foot"><button data-cancel>Cancel</button><button data-del>Delete</button></div>`;
-    document.body.appendChild(el);
-    nextFrame().then(() => el.classList.add('open'));
-    const dots = el.querySelectorAll('.pc-dots i');
-    let code = '', busy = false;
-    const paint = () => dots.forEach((d, i) => d.classList.toggle('on', i < code.length));
-    const finish = v => { el.classList.remove('open'); setTimeout(() => el.remove(), 260); resolve(v); };
-    const reject = async () => {
-      const d = el.querySelector('.pc-dots');
-      d.classList.add('shake');
-      await sleep(450);
-      d.classList.remove('shake');
-      code = '';
-      paint();
-    };
-    el.addEventListener('click', async e => {
-      if (busy) return;
-      const k = e.target.closest('[data-k]');
-      if (k) {
-        if (code.length >= 6) return;
-        code += k.dataset.k;
-        paint();
-        haptic();
-        if (code.length < 6) return;
-        if (!check) return finish(code);
-        let ok = check(code);
-        if (ok instanceof Promise) { busy = true; ok = await ok; busy = false; }
-        if (ok) finish(code); else reject();
-        return;
-      }
-      if (e.target.closest('[data-del]')) { code = code.slice(0, -1); paint(); }
-      else if (e.target.closest('[data-cancel]')) finish(null);
+    const root = document.createElement('div');
+    root.className = 'al-root';
+    root.innerHTML = `<div class="al-box"><div class="al-text"><b>${esc(title)}</b>${message ? `<span>${esc(message)}</span>` : ''}</div>
+      <div class="al-btns ${actions.length > 2 ? 'stacked' : ''}">${actions.map((a, i) => `<button class="al-btn ${a.style || ''}" data-i="${i}">${esc(a.label)}</button>`).join('')}</div></div>`;
+    document.body.appendChild(root);
+    nextFrame().then(() => root.classList.add('open'));
+    root.addEventListener('click', e => {
+      const b = e.target.closest('[data-i]');
+      if (!b) return;
+      const a = actions[+b.dataset.i];
+      a.onClick?.();
+      root.classList.remove('open');
+      setTimeout(() => root.remove(), 250);
+      resolve(a.value ?? a.label);
     });
   });
 }
@@ -322,67 +300,34 @@ const b64u = {
   enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
   dec: s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0)),
 };
-async function sha(s) {
-  try {
-    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('larp:' + s));
-    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return 'plain:' + s;
-  }
-}
-
-function makeHud() {
-  const el = document.createElement('div');
-  el.className = 'fid-hud';
-  el.innerHTML = `<div class="fid-box">${FACE_ID}<div class="fid-label">Face ID</div></div>`;
-  document.body.appendChild(el);
-  nextFrame().then(() => el.classList.add('in'));
-  return el;
-}
 
 /**
- * Face ID lock for one app. Modes: 'off', 'sim' (animation only) and 'real'
- * (the device's Face ID through a platform passkey, which also needs a passcode fallback).
+ * Face ID lock for one app, using the device's real Face ID through a platform passkey.
+ * Every WebAuthn call must start directly from a tap, or iOS refuses to show the prompt.
  */
-export function createLock({ app, name, logo, payLabel = 'Require Face ID to Pay' }) {
+export function createLock({ app, name, logo, payLabel = 'Require Face ID to Pay', purpose = 'payments' }) {
   const KEY = `${app}:lock`;
-  const cfg = Object.assign({ mode: 'sim', lockOnOpen: true, requireForPay: true, autoLock: 10, credId: null, pass: null }, load(KEY, {}));
+  const saved = load(KEY, {});
+  // Older builds stored a "mode" and a passcode; only a real passkey carries over.
+  if ('mode' in saved) {
+    saved.enabled = saved.mode === 'real' && !!saved.credId;
+    delete saved.mode;
+    delete saved.pass;
+  }
+  const cfg = Object.assign({ enabled: false, credId: null, lockOnOpen: true, requireForPay: true, autoLock: 10, asked: false }, saved);
+  if (!cfg.credId) cfg.enabled = false;
   const persist = () => save(KEY, cfg);
   let lockEl = null, hiddenAt = 0, busy = false;
 
-  async function verify({ host, silentFail = false } = {}) {
-    const hud = host ? null : makeHud();
-    const target = host || hud;
-    target.classList.remove('ok', 'fail');
-    target.classList.add('scan');
-    let ok = false;
-    if (cfg.mode === 'real' && cfg.credId) {
-      hud?.classList.add('quiet');
-      try {
-        await navigator.credentials.get({ publicKey: {
-          challenge: randBytes(32),
-          allowCredentials: [{ type: 'public-key', id: b64u.dec(cfg.credId), transports: ['internal'] }],
-          userVerification: 'required',
-          timeout: 60000,
-        } });
-        ok = true;
-      } catch {
-        ok = false;
-      }
-      hud?.classList.remove('quiet');
-    } else {
-      await sleep(1050);
-      ok = true;
+  async function available() {
+    try {
+      return !!window.PublicKeyCredential && window.isSecureContext && (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+    } catch {
+      return false;
     }
-    target.classList.remove('scan');
-    if (ok) { target.classList.add('ok'); haptic(); await sleep(700); }
-    else if (!silentFail) { target.classList.add('fail'); await sleep(850); }
-    if (hud) { hud.classList.remove('in'); setTimeout(() => hud.remove(), 250); }
-    return ok;
   }
-
-  async function createPasskey() {
-    const cred = await navigator.credentials.create({ publicKey: {
+  function createPasskey() {
+    return navigator.credentials.create({ publicKey: {
       challenge: randBytes(32),
       rp: { name },
       user: { id: randBytes(16), name: `${name} Lock`, displayName: `${name} Lock` },
@@ -390,62 +335,97 @@ export function createLock({ app, name, logo, payLabel = 'Require Face ID to Pay
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
       timeout: 60000,
       attestation: 'none',
+    } }).then(cred => b64u.enc(cred.rawId));
+  }
+  function checkPasskey() {
+    return navigator.credentials.get({ publicKey: {
+      challenge: randBytes(32),
+      allowCredentials: [{ type: 'public-key', id: b64u.dec(cfg.credId), transports: ['internal'] }],
+      userVerification: 'required',
+      timeout: 60000,
     } });
-    return b64u.enc(cred.rawId);
   }
 
-  const checkPass = async code => (await sha(code)) === cfg.pass;
-
-  async function setPasscode() {
-    const first = await passcodePad('Enter a New Passcode');
-    if (!first) return false;
-    const again = await passcodePad('Verify Your New Passcode', c => c === first);
-    if (!again) return false;
-    cfg.pass = await sha(first);
-    persist();
-    toast('Passcode set');
-    return true;
-  }
-
-  async function setMode(m) {
-    const weakening = cfg.mode === 'real' || (cfg.mode !== 'off' && m === 'off');
-    if (weakening && !(await verify())) return;
-    if (m === 'real') {
-      if (!window.PublicKeyCredential) return toast('Face ID isn’t available here');
-      let credId;
-      try {
-        credId = await createPasskey();
-      } catch (e) {
-        return toast(e?.name === 'NotAllowedError' ? 'Face ID setup cancelled' : 'Face ID setup failed');
-      }
-      if (!cfg.pass && !(await setPasscode())) return toast('A passcode is required');
-      cfg.credId = credId;
+  async function enable() {
+    try {
+      cfg.credId = await createPasskey();
+      cfg.enabled = true;
+      cfg.asked = true;
+      persist();
+      haptic();
+      toast('Face ID is on');
+      return true;
+    } catch (e) {
+      toast(e?.name === 'NotAllowedError' ? 'Face ID wasn’t turned on' : 'Face ID isn’t available here');
+      return false;
     }
-    cfg.mode = m;
-    persist();
+  }
+
+  // `host` is an element showing the Face ID glyph; it gets scan/ok/fail states.
+  async function verify({ host } = {}) {
+    if (!cfg.enabled) return true;
+    host?.classList.remove('ok', 'fail');
+    host?.classList.add('scan');
+    let ok = false;
+    try { await checkPasskey(); ok = true; } catch { ok = false; }
+    host?.classList.remove('scan');
+    if (ok) {
+      haptic();
+      if (host) { host.classList.add('ok'); await sleep(650); }
+    } else if (host) {
+      host.classList.add('fail');
+      await sleep(700);
+    }
+    return ok;
   }
 
   function showLock() {
-    if (lockEl || cfg.mode === 'off') return;
+    if (lockEl || !cfg.enabled) return;
     lockEl = document.createElement('div');
     lockEl.className = 'lock-screen';
     lockEl.innerHTML = `<div class="lock-logo">${logo}</div><div class="lock-title">${esc(name)}</div><div class="lock-sub">Locked</div>
       <button class="lock-fid tap" data-fid aria-label="Unlock with Face ID">${FACE_ID}</button>
       <div class="lock-hint">Tap to unlock with Face ID</div>
-      ${cfg.pass ? '<button class="lock-pass" data-pass>Enter Passcode</button>' : ''}`;
+      <button class="lock-pass hidden" data-again>Set Up Face ID Again</button>`;
     document.body.appendChild(lockEl);
-    lockEl.addEventListener('click', async e => {
+    lockEl.addEventListener('click', e => {
       if (e.target.closest('[data-fid]')) attempt(false);
-      else if (e.target.closest('[data-pass]') && (await passcodePad('Enter Passcode', checkPass))) unlock();
+      else if (e.target.closest('[data-again]')) setUpAgain();
     });
-    setTimeout(() => attempt(true), 350);
+    attempt(true);
   }
   async function attempt(auto) {
     if (busy || !lockEl) return;
     busy = true;
-    const ok = await verify({ silentFail: auto });
+    const el = lockEl, glyph = el.querySelector('.lock-fid');
+    glyph.classList.remove('fail');
+    glyph.classList.add('scan');
+    let ok = false;
+    try { await checkPasskey(); ok = true; } catch {}
     busy = false;
-    if (ok) unlock();
+    glyph.classList.remove('scan');
+    if (ok) {
+      glyph.classList.add('ok');
+      haptic();
+      await sleep(450);
+      return unlock();
+    }
+    // Opening the app isn't a tap, so iOS may block the automatic try; that one fails quietly.
+    if (!auto) {
+      glyph.classList.add('fail');
+      el.querySelector('[data-again]').classList.remove('hidden');
+    }
+  }
+  // If the saved passkey was deleted, making a new one still needs the owner's Face ID or iPhone passcode.
+  async function setUpAgain() {
+    try {
+      cfg.credId = await createPasskey();
+      persist();
+      haptic();
+      unlock();
+    } catch {
+      toast('Face ID didn’t work');
+    }
   }
   function unlock() {
     const el = lockEl;
@@ -454,70 +434,75 @@ export function createLock({ app, name, logo, payLabel = 'Require Face ID to Pay
     setTimeout(() => el?.remove(), 420);
   }
 
+  const clearPrivacy = () => document.documentElement.classList.remove('privacy');
   document.addEventListener('visibilitychange', () => {
     if (picking) return;
     if (document.hidden) {
       hiddenAt = Date.now();
       document.documentElement.classList.add('privacy');
     } else {
-      document.documentElement.classList.remove('privacy');
-      if (cfg.mode !== 'off' && cfg.lockOnOpen && hiddenAt && Date.now() - hiddenAt >= cfg.autoLock * 1000) showLock();
+      clearPrivacy();
+      if (cfg.enabled && cfg.lockOnOpen && hiddenAt && Date.now() - hiddenAt >= cfg.autoLock * 1000) showLock();
     }
   });
+  addEventListener('pageshow', clearPrivacy);
+  addEventListener('focus', clearPrivacy);
 
   const autoLabel = v => v === 0 ? 'Immediately' : v < 60 ? `After ${v} seconds` : `After ${v / 60} minute${v > 60 ? 's' : ''}`;
 
-  function openSettings({ onClose } = {}) {
+  async function openSettings({ onClose } = {}) {
+    const can = await available();
     const s = sheet('', { onClose });
     const render = () => s.set(`
-      <div class="sheet-head"><span></span><h2>Face ID &amp; Passcode</h2><button class="link b" data-close>Done</button></div>
-      <div class="fid-hero">${FACE_ID}</div>
-      <div class="group-title">Face ID</div>
-      <div class="group"><div class="row"><div class="seg">${[['off', 'Off'], ['sim', 'Simulated'], ['real', 'Device']].map(([m, l]) => `<button data-mode="${m}" class="${cfg.mode === m ? 'on' : ''}">${l}</button>`).join('')}</div></div></div>
-      <div class="group-foot">${cfg.mode === 'real'
-        ? 'Using your iPhone’s real Face ID through a passkey. iOS shows its own prompt.'
-        : 'Simulated plays the Face ID animation. Device uses your iPhone’s real Face ID.'}</div>
-      ${cfg.mode !== 'off' ? `<div class="group">
+      <div class="sheet-head"><span></span><h2>Face ID</h2><button class="link b" data-close>Done</button></div>
+      <div class="fid-hero ${cfg.enabled ? '' : 'off'}">${FACE_ID}</div>
+      <div class="group"><label class="row"><span class="label">Use Face ID</span>${switchHTML(`data-k="enabled"${can || cfg.enabled ? '' : ' disabled'}`, cfg.enabled)}</label></div>
+      <div class="group-foot">${can
+        ? `Uses your iPhone’s real Face ID. iOS saves a passkey called “${esc(name)} Lock” to make it work.`
+        : 'Face ID isn’t available here. Open the app from your Home Screen on an iPhone with Face ID.'}</div>
+      ${cfg.enabled ? `<div class="group">
         <label class="row"><span class="label">Lock on Open</span>${switchHTML('data-k="lockOnOpen"', cfg.lockOnOpen)}</label>
         <label class="row"><span class="label">${esc(payLabel)}</span>${switchHTML('data-k="requireForPay"', cfg.requireForPay)}</label>
         <button class="row" data-autolock><span class="label">Auto-Lock</span><span class="value">${autoLabel(cfg.autoLock)}</span>${CHEV}</button>
-      </div>` : ''}
-      <div class="group">
-        <button class="row" data-setpass><span class="label accent">${cfg.pass ? 'Change Passcode' : 'Turn Passcode On'}</span></button>
-        ${cfg.pass ? '<button class="row" data-passoff><span class="label danger">Turn Passcode Off</span></button>' : ''}
-      </div>
-      <div class="group-foot">The passcode is your backup when Face ID doesn’t work.</div>`);
+      </div>` : ''}`);
     render();
-    s.el.addEventListener('click', async e => {
-      const m = e.target.closest('[data-mode]')?.dataset.mode;
-      if (m) {
-        if (m !== cfg.mode) { haptic(); await setMode(m); render(); }
-      } else if (e.target.closest('[data-autolock]')) {
-        const v = await actionSheet({ title: 'Auto-Lock', actions: [0, 10, 60, 300].map(value => ({ label: autoLabel(value), value })) });
-        if (v != null) { cfg.autoLock = v; persist(); render(); }
-      } else if (e.target.closest('[data-setpass]')) {
-        if (cfg.pass && !(await passcodePad('Enter Old Passcode', checkPass))) return;
-        if (await setPasscode()) render();
-      } else if (e.target.closest('[data-passoff]')) {
-        if (cfg.mode === 'real') return toast('Switch Face ID off Device first');
-        if (await passcodePad('Enter Passcode', checkPass)) { cfg.pass = null; persist(); render(); }
-      }
-    });
-    s.el.addEventListener('change', e => {
+    s.el.addEventListener('change', async e => {
       const k = e.target.dataset.k;
-      if (k) { cfg[k] = e.target.checked; persist(); }
+      if (!k) return;
+      if (k !== 'enabled') { cfg[k] = e.target.checked; return persist(); }
+      if (e.target.checked) await enable();
+      else if (await verify()) { cfg.enabled = false; persist(); }
+      render();
+    });
+    s.el.addEventListener('click', async e => {
+      if (!e.target.closest('[data-autolock]')) return;
+      const v = await actionSheet({ title: 'Auto-Lock', actions: [0, 10, 60, 300].map(value => ({ label: autoLabel(value), value })) });
+      if (v != null) { cfg.autoLock = v; persist(); render(); }
     });
     return s;
   }
 
+  // First launch: ask once, the way iOS apps do.
+  async function offer() {
+    if (cfg.asked || cfg.enabled || !(await available())) return;
+    cfg.asked = true;
+    persist();
+    alertBox({
+      title: `Use Face ID with ${name}?`,
+      message: `Lock ${name} and confirm ${purpose} with Face ID.`,
+      actions: [{ label: 'Not Now' }, { label: 'Use Face ID', style: 'b', onClick: enable }],
+    });
+  }
+
   return {
     cfg,
-    get enabled() { return cfg.mode !== 'off'; },
-    get needed() { return cfg.mode !== 'off' && cfg.requireForPay; },
-    modeLabel: () => ({ off: 'Off', sim: 'Simulated', real: 'On' })[cfg.mode],
+    get enabled() { return cfg.enabled; },
+    get needed() { return cfg.enabled && cfg.requireForPay; },
+    modeLabel: () => (cfg.enabled ? 'On' : 'Off'),
     verify,
     lock: showLock,
     openSettings,
+    offer,
   };
 }
 

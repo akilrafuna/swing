@@ -53,27 +53,48 @@ const CATS = {
   health: { emoji: '💊', color: '#64d2ff', label: 'Health' },
   bills: { emoji: '💡', color: '#5e5ce6', label: 'Bills' },
   transfer: { emoji: '💸', color: '#34c759', label: 'Transfer' },
+  nightlife: { emoji: '🍾', color: '#ff2d55', label: 'Nightlife' },
+  hotel: { emoji: '🏨', color: '#32ade6', label: 'Hotels' },
+  cars: { emoji: '🏎️', color: '#ff3b30', label: 'Cars' },
+  luxury: { emoji: '💎', color: '#5ac8fa', label: 'Luxury' },
   other: { emoji: '🧾', color: '#8e8e93', label: 'Other' },
 };
-const RANDOM = [
+// [merchant, category, lowest price, highest price]; Randomize only picks what the card can afford.
+const MERCHANTS = [
   ['Corner Coffee Co.', 'coffee', 4, 11],
-  ['Night Owl Diner', 'food', 18, 64],
+  ['Taco Truck', 'food', 9, 24],
   ['Late Night Pizza', 'food', 14, 42],
-  ['Sushi Palace', 'food', 60, 240],
-  ['Steakhouse 1920', 'food', 180, 640],
-  ['Green Grocer', 'groceries', 28, 160],
-  ['Gas & Go', 'gas', 35, 95],
+  ['Night Owl Diner', 'food', 18, 64],
+  ['Pharmacy Plus', 'health', 8, 45],
   ['City Rideshare', 'transport', 12, 58],
   ['Movie Palace', 'fun', 16, 48],
-  ['Rooftop Lounge', 'fun', 90, 420],
-  ['Sneaker Vault', 'shopping', 160, 480],
-  ['Designer Atelier', 'shopping', 900, 6400],
-  ['Luxury Watch Boutique', 'shopping', 2400, 18500],
-  ['Five Star Hotel', 'travel', 650, 3200],
-  ['Private Jet Charter', 'travel', 8500, 42000],
-  ['Yacht Club Marina', 'travel', 1200, 9800],
-  ['Pharmacy Plus', 'health', 8, 45],
+  ['Green Grocer', 'groceries', 28, 160],
+  ['Gas & Go', 'gas', 35, 95],
   ['Power & Light Co.', 'bills', 80, 240],
+  ['Sushi Palace', 'food', 60, 240],
+  ['Rooftop Lounge', 'nightlife', 90, 420],
+  ['Spa & Sauna', 'health', 120, 450],
+  ['Concert Tickets', 'fun', 150, 900],
+  ['Sneaker Vault', 'shopping', 160, 480],
+  ['Steakhouse 1920', 'food', 180, 640],
+  ['Boutique Hotel', 'hotel', 280, 900],
+  ['Airline Tickets', 'travel', 380, 1600],
+  ['Tech Store', 'shopping', 499, 2400],
+  ['Michelin Tasting Menu', 'food', 600, 2400],
+  ['Five Star Hotel', 'hotel', 900, 8000],
+  ['Designer Atelier', 'shopping', 900, 6400],
+  ['Exotic Car Rental', 'cars', 1200, 6000],
+  ['VIP Table Service', 'nightlife', 2000, 15000],
+  ['Luxury Watch Boutique', 'luxury', 2400, 18500],
+  ['Helicopter Tour', 'travel', 2500, 9000],
+  ['Fine Jewelry', 'luxury', 3000, 25000],
+  ['First Class Flight', 'travel', 6500, 18000],
+  ['Private Jet Charter', 'travel', 8500, 65000],
+  ['Yacht Club Marina', 'travel', 12000, 90000],
+  ['Penthouse Rental', 'hotel', 15000, 80000],
+  ['Art Auction House', 'luxury', 25000, 600000],
+  ['Diamond Exchange', 'luxury', 40000, 250000],
+  ['Supercar Dealership', 'cars', 180000, 420000],
 ];
 const CITIES = ['Miami, FL', 'Los Angeles, CA', 'New York, NY', 'Las Vegas, NV', 'Beverly Hills, CA', 'Aspen, CO', 'Monaco', 'Dubai', 'Bikini Bottom'];
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -119,7 +140,7 @@ const cardSig = c => JSON.stringify([c.name, c.network, c.last4, c.holder, c.pre
 /* ---------- shell ---------- */
 const app = $('#app');
 document.body.insertAdjacentHTML('afterbegin', DEFS);
-app.innerHTML = `
+app.innerHTML = `<div class="status-cover"></div>
   <div class="wallet" id="wallet">
     <header class="w-head"><h1>Wallet</h1><div class="w-btns">
       <button class="circle-btn tap" data-act="add" aria-label="Add card">${I.plus}</button>
@@ -253,12 +274,12 @@ function renderDetails() {
     <div class="d-actions">
       <button class="d-act tap" data-act="info">${I.info}<span>Details</span></button>
       <button class="d-act tap" data-act="tx-add">${I.plus}<span>Add</span></button>
-      <button class="d-act tap" data-act="tx-gen">${I.sparkle}<span>Generate</span></button>
+      <button class="d-act tap" data-act="tx-gen">${I.sparkle}<span>Randomize</span></button>
       <button class="d-act tap" data-act="edit">${I.edit}<span>Edit</span></button>
     </div>
     ${weekHTML(c)}
     <div class="d-title"><span>Latest Transactions</span></div>
-    ${txs.length ? `<div class="group tx-list">${txs.map(txRow).join('')}</div>` : '<div class="d-empty">No transactions yet.<br>Tap Add or Generate to make some.</div>'}`;
+    ${txs.length ? `<div class="group tx-list">${txs.map(txRow).join('')}</div>` : '<div class="d-empty">No transactions yet.<br>Tap Add or Randomize to make some.</div>'}`;
 }
 
 /* ---------- add / edit card ---------- */
@@ -506,18 +527,77 @@ function txForm(c, existing) {
     persist(); s.close(); haptic(); refresh();
   });
 }
-function generateTx(c) {
-  const now = Date.now();
-  const batch = Array.from({ length: 8 }, () => {
-    const [merchant, cat, lo, hi] = pick(RANDOM);
-    return { id: uid(), merchant, cat, amount: round2(lo + Math.random() * (hi - lo)), ts: now - Math.random() * 13 * 864e5 - 6e5, note: pick(CITIES), status: 'done', type: 'purchase' };
-  }).sort((a, b) => b.ts - a.ts);
-  batch[0].status = 'pending';
-  c.tx.push(...batch);
-  persist();
-  haptic();
-  refresh();
-  toast('Added 8 transactions', I.check);
+/* ---------- randomize purchases ---------- */
+const budgetOf = c => (c.kind === 'credit' ? c.limit : c.balance) || 2000;
+function tierOf(budget) {
+  if (budget < 2000) return ['Everyday', 'Coffee, food, gas and groceries'];
+  if (budget < 25000) return ['Comfortable', 'Nice dinners, sneakers, hotels and flights'];
+  if (budget < 250000) return ['Big Spender', 'Designer fits, watches, VIP tables and first class'];
+  return ['Billionaire', 'Private jets, yachts, supercars and art auctions'];
+}
+// Picks merchants the card can afford, leaning toward the expensive ones, and keeps the total under the budget.
+function randomPurchases(c, count, days) {
+  const budget = budgetOf(c);
+  let left = budget * 0.9;
+  const now = Date.now(), out = [];
+  for (let i = 0; i < count; i++) {
+    const pool = MERCHANTS.filter(m => m[2] <= Math.min(budget * 0.2, left * 0.5));
+    if (!pool.length) break;
+    let m = pick(pool);
+    if (Math.random() < 0.7) {
+      const weights = pool.map(p => Math.sqrt(p[2]));
+      let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+      m = pool.find((_, j) => (r -= weights[j]) <= 0) || m;
+    }
+    const [merchant, cat, lo, hi] = m;
+    const top = Math.max(lo, Math.min(hi, budget * 0.35, left * 0.6));
+    let amount = lo + Math.random() * (top - lo);
+    amount = amount >= 1000 && Math.random() < 0.5 ? Math.round(amount) : round2(amount);
+    left -= amount;
+    out.push({ id: uid(), merchant, cat, amount, ts: now - Math.random() * days * 864e5 - 6e5, note: pick(CITIES), status: 'done', type: 'purchase' });
+  }
+  out.sort((a, b) => b.ts - a.ts);
+  if (out[0] && now - out[0].ts < 864e5) out[0].status = 'pending';
+  return out;
+}
+function randomizeSheet(c) {
+  const st = { count: 10, days: 30, adjust: false };
+  const budget = budgetOf(c);
+  const [tier, blurb] = tierOf(budget);
+  const segs = (attr, cur, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-${attr}="${v}" class="${cur === v ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const s = sheet(`
+    <div class="sheet-head"><button class="link" data-close>Cancel</button><h2>Randomize</h2><button class="link b" data-go>Add</button></div>
+    <div class="rz-hero"><span class="rz-tier">${tier}</span><b>${usd(budget)}</b><small>${c.kind === 'credit' ? 'credit limit' : 'balance'} · ${blurb}</small></div>
+    <div class="group-title">How Many</div>
+    <div class="group"><div class="row">${segs('count', st.count, [[5, '5'], [10, '10'], [25, '25'], [50, '50']])}</div></div>
+    <div class="group-title">Over the Last</div>
+    <div class="group"><div class="row">${segs('days', st.days, [[7, 'Week'], [30, 'Month'], [90, '3 Months']])}</div></div>
+    <div class="group"><label class="row"><span class="label">Update Card Balance</span>${switchHTML('data-adjust', st.adjust)}</label></div>
+    <div class="group-foot">Picks real-looking purchases that fit this card’s ${c.kind === 'credit' ? 'limit' : 'balance'}. Raise it to unlock fancier stuff.</div>`);
+  s.el.addEventListener('change', e => { if (e.target.matches('[data-adjust]')) st.adjust = e.target.checked; });
+  s.el.addEventListener('click', e => {
+    for (const attr of ['count', 'days']) {
+      const b = e.target.closest(`[data-${attr}]`);
+      if (!b) continue;
+      st[attr] = +b.dataset[attr];
+      $$(`[data-${attr}]`, s.el).forEach(x => x.classList.toggle('on', x === b));
+      haptic();
+      return;
+    }
+    if (!e.target.closest('[data-go]')) return;
+    const batch = randomPurchases(c, st.count, st.days);
+    if (!batch.length) return toast('Raise the balance first');
+    c.tx.push(...batch);
+    if (st.adjust) {
+      const spent = batch.reduce((a, t) => a + t.amount, 0);
+      c.balance = round2(Math.max(0, c.balance + (c.kind === 'credit' ? spent : -spent)));
+    }
+    persist();
+    s.close();
+    haptic();
+    refresh();
+    toast(`Added ${batch.length} purchases`, I.check);
+  });
 }
 
 /* ---------- pay ---------- */
@@ -525,7 +605,7 @@ async function payFlow(c) {
   const el = document.createElement('div');
   el.className = 'pay';
   el.innerHTML = `<div class="pay-card">${cardHTML(c)}</div>
-    <div class="pay-stage"><div class="pay-glyph">${FACE_ID}</div><div class="pay-label">${lock.needed ? 'Pay with Face ID' : 'Ready to Pay'}</div></div>
+    <div class="pay-stage">${lock.needed ? `<div class="pay-glyph">${FACE_ID}</div><div class="pay-label">Pay with Face ID</div>` : ''}</div>
     <button class="pay-cancel" data-x>Cancel</button>`;
   document.body.appendChild(el);
   let closed = false;
@@ -534,14 +614,16 @@ async function payFlow(c) {
   nextFrame().then(() => el.classList.add('in'));
   const stage = $('.pay-stage', el);
 
-  async function authorize() {
-    if (!lock.needed) { await sleep(600); return true; }
-    return lock.verify({ host: $('.pay-glyph', el) });
-  }
-  let ok = await authorize();
-  while (!ok && !closed) {
-    $('.pay-label', el).innerHTML = 'Face ID Not Recognized<button class="pay-retry">Try Again</button>';
-    ok = await new Promise(res => { $('.pay-retry', el).onclick = () => { $('.pay-label', el).textContent = 'Pay with Face ID'; authorize().then(res); }; });
+  if (lock.needed) {
+    // verify() has to start inside the Pay tap for iOS to show Face ID.
+    const authorize = () => lock.verify({ host: $('.pay-glyph', el) });
+    let ok = await authorize();
+    while (!ok && !closed) {
+      $('.pay-label', el).innerHTML = 'Face ID Not Recognized<button class="pay-retry">Try Again</button>';
+      ok = await new Promise(res => { $('.pay-retry', el).onclick = () => { $('.pay-label', el).textContent = 'Pay with Face ID'; authorize().then(res); }; });
+    }
+  } else {
+    await sleep(350);
   }
   if (closed) return;
   stage.innerHTML = `<div class="nfc-anim">${I.nfc}${I.nfc}</div><div class="pay-label">Hold Near Reader</div><div class="pay-hint">Tap anywhere to simulate the reader</div>`;
@@ -583,7 +665,7 @@ function openSettings() {
   const s = sheet('');
   const render = () => s.set(`
     <div class="sheet-head"><span></span><h2>Settings</h2><button class="link b" data-close>Done</button></div>
-    <div class="group"><button class="row" data-sec><span class="row-ic" style="background:#30d158">${FACE_ID}</span><span class="label">Face ID &amp; Passcode</span><span class="value">${lock.modeLabel()}</span>${I.chev}</button></div>
+    <div class="group"><button class="row" data-sec><span class="row-ic" style="background:#30d158">${FACE_ID}</span><span class="label">Face ID</span><span class="value">${lock.modeLabel()}</span>${I.chev}</button></div>
     <div class="group"><label class="row"><span class="label">Card Shine Follows Tilt</span>${switchHTML('data-tilt', S.settings.tilt)}</label></div>
     <div class="group-foot">Moves the light on your cards as you tilt your iPhone.</div>
     <div class="group"><button class="row danger-row" data-reset>Reset Wallet</button></div>
@@ -628,7 +710,7 @@ document.addEventListener('click', e => {
     case 'info': return c && cardInfo(c);
     case 'edit': return c && cardForm(c);
     case 'tx-add': return c && txForm(c);
-    case 'tx-gen': return c && generateTx(c);
+    case 'tx-gen': return c && randomizeSheet(c);
     case 'tx-edit': {
       const t = c?.tx.find(x => x.id === el.dataset.id);
       return t && txForm(c, t);
@@ -655,6 +737,7 @@ if (lock.cfg.lockOnOpen) lock.lock();
 await loadImages('pocket:');
 measureSafe();
 refresh();
+lock.offer();
 // iOS asks for motion permission again each launch; re-request on the first tap.
 if (S.settings.tilt) document.addEventListener('click', () => enableTilt(), { once: true });
 registerSW('../sw.js');

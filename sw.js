@@ -1,5 +1,5 @@
 // Offline cache for both apps. Bump VERSION after deploying changes.
-const VERSION = 'larp-v1';
+const VERSION = 'larp-v2';
 const FILES = [
   './',
   './index.html',
