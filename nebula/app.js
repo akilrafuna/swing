@@ -1,4 +1,4 @@
-// Nebula — a crypto wallet simulator. Every balance, price and transaction is local and made up.
+// Phantom — a crypto wallet simulator. Every balance, price and transaction is local and made up.
 import {
   $, $$, esc, uid, sleep, clamp, load, save, images, loadImages, setImage, deleteImage, clearImages,
   pickImage, haptic, toast, sheet, actionSheet, push, createLock, switchHTML, hashStr, rng, registerSW, FACE_ID,
@@ -6,7 +6,7 @@ import {
 
 const KEY = 'nebula:state';
 
-const LOGO = `<svg viewBox="0 0 100 100"><defs><linearGradient id="nb-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b6cff"/><stop offset="1" stop-color="#3b1d9e"/></linearGradient><radialGradient id="nb-pl" cx=".38" cy=".35" r=".8"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cdbfff"/></radialGradient></defs><rect width="100" height="100" fill="url(#nb-bg)"/><g transform="rotate(-24 50 50)"><path d="M13 50a37 10 0 0 1 74 0" fill="none" stroke="#fff" stroke-width="4.4"/></g><circle cx="50" cy="50" r="20" fill="url(#nb-pl)"/><g transform="rotate(-24 50 50)"><path d="M87 50a37 10 0 0 1-74 0" fill="none" stroke="#5a3fd0" stroke-width="7.4"/><path d="M87 50a37 10 0 0 1-74 0" fill="none" stroke="#fff" stroke-width="4.4"/></g></svg>`;
+const LOGO = `<img src="icon-512.png" alt="">`;
 
 const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const I = {
@@ -105,7 +105,7 @@ function orbArt(seed) {
 function seed() {
   const now = Date.now(), H = 36e5;
   const tokens = CATALOG.map(c => ({ ...c, open: c.price / (1 + c.chg / 100), hidden: false }));
-  const nfts = [421, 1337, 88, 2048].map(n => ({ id: uid(), name: `Nebula Orb #${String(n).padStart(4, '0')}`, collection: 'Nebula Orbs', floor: +(8 + (n % 17)).toFixed(1), art: orbArt(n) }));
+  const nfts = [421, 1337, 88, 2048].map(n => ({ id: uid(), name: `Phantom Orb #${String(n).padStart(4, '0')}`, collection: 'Phantom Orbs', floor: +(8 + (n % 17)).toFixed(1), art: orbArt(n) }));
   return {
     v: 1,
     account: { name: 'Account 1', handle: '', avatar: '🪐', addrs: newAddrs() },
@@ -142,7 +142,7 @@ function totals() {
 }
 const sortActivity = () => S.activity.sort((a, b) => b.ts - a.ts);
 
-const lock = createLock({ app: 'nebula', name: 'Nebula', logo: LOGO, payLabel: 'Require Face ID to Send', purpose: 'sends' });
+const lock = createLock({ app: 'nebula', name: 'Phantom', logo: LOGO, payLabel: 'Require Face ID to Send', purpose: 'sends' });
 const refreshers = new Set();
 const pages = new Set();
 
@@ -1047,7 +1047,7 @@ function openSettings() {
         <button class="row" data-regen><span class="label accent">Generate New Addresses</span></button>
       </div>
       <div class="group"><button class="row danger-row" data-reset>Reset Wallet</button></div>
-      <p class="fine">Nebula is a wallet simulator. Balances, prices and transactions are made up and stay on this device.</p>`);
+      <p class="fine">Phantom is a wallet simulator. Balances, prices and transactions are made up and stay on this device.</p>`);
   };
   render();
   s.el.addEventListener('input', e => {
@@ -1069,7 +1069,7 @@ function openSettings() {
       const ok = await actionSheet({ message: 'Replace all of your addresses with new random ones?', actions: [{ label: 'Generate New Addresses', value: 1 }] });
       if (ok) { S.account.addrs = newAddrs(); persist(); refreshAll(); toast('New addresses ready', I.check); }
     } else if (e.target.closest('[data-reset]')) {
-      const ok = await actionSheet({ title: 'Reset Wallet', message: 'This erases every balance, token, collectible and activity in Nebula.', actions: [{ label: 'Reset Wallet', style: 'destructive', value: 1 }] });
+      const ok = await actionSheet({ title: 'Reset Wallet', message: 'This erases every balance, token, collectible and activity in Phantom.', actions: [{ label: 'Reset Wallet', style: 'destructive', value: 1 }] });
       if (!ok) return;
       clearTimeout(saveTimer);
       try { localStorage.removeItem(KEY); } catch {}

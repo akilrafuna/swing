@@ -146,7 +146,7 @@
 .qr{position:relative}
 .qr>svg{width:100%;height:auto}
 .qr-logo{position:absolute;left:50%;top:50%;width:20%;height:20%;transform:translate(-50%,-50%);border-radius:22%;overflow:hidden;box-shadow:0 0 0 5px #fff}
-.qr-logo svg{width:100%;height:100%}
+.qr-logo svg,.qr-logo img{display:block;width:100%;height:100%;object-fit:cover}
 .qr-addr{margin-top:14px;font-size:15px;word-break:break-all;text-align:center;line-height:1.4}
 .qr-note{text-align:center;color:var(--fg2);font-size:14px;margin:16px 20px 0}
 .sheet-foot .btn svg{width:20px;height:20px}

@@ -141,7 +141,7 @@ html:not(.native-switch) .switch input:checked+i{transform:translateX(20px)}
 .lock-screen{position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--lock-bg,var(--bg));color:var(--fg);padding:env(safe-area-inset-top) 24px env(safe-area-inset-bottom);transition:opacity .4s,transform .4s cubic-bezier(.32,.72,0,1)}
 .lock-screen.out{opacity:0;transform:scale(1.1);pointer-events:none}
 .lock-logo{width:88px;height:88px;border-radius:21px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);margin-bottom:8px}
-.lock-logo svg{width:100%;height:100%}
+.lock-logo svg,.lock-logo img{display:block;width:100%;height:100%;object-fit:cover}
 .lock-title{font-size:24px;font-weight:700}
 .lock-sub{color:var(--fg2);font-size:15px}
 .lock-fid{margin-top:56px;width:76px;height:76px;color:var(--accent)}

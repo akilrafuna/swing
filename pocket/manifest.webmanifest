@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Pocket",
-  "short_name": "Pocket",
+  "name": "Wallet",
+  "short_name": "Wallet",
   "description": "A card wallet simulator.",
   "start_url": "./",
   "scope": "./",

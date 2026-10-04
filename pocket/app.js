@@ -1,4 +1,4 @@
-// Pocket — a card wallet simulator. Cards, balances and transactions are local and made up.
+// Wallet — a card wallet simulator. Cards, balances and transactions are local and made up.
 import {
   $, $$, esc, uid, sleep, clamp, nextFrame, load, save, images, loadImages, setImage, deleteImage, clearImages,
   pickImage, haptic, toast, sheet, actionSheet, createLock, switchHTML, registerSW, FACE_ID,
@@ -6,7 +6,7 @@ import {
 
 const KEY = 'pocket:state';
 
-const LOGO = `<svg viewBox="0 0 100 100"><defs><linearGradient id="pk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2c2e"/><stop offset="1" stop-color="#050505"/></linearGradient><linearGradient id="pk-a" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#3b82f6"/></linearGradient><linearGradient id="pk-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9f0a"/><stop offset="1" stop-color="#ff375f"/></linearGradient></defs><rect width="100" height="100" fill="url(#pk-bg)"/><rect x="26" y="22" width="60" height="38" rx="5.5" fill="url(#pk-a)" transform="rotate(11.5 56 41)"/><g transform="rotate(-8 46 58)"><rect x="15" y="38.5" width="62" height="39" rx="5.5" fill="url(#pk-b)"/><rect x="24" y="52.2" width="10" height="7.5" rx="1.6" fill="#ffe4a3"/><rect x="33" y="67.5" width="36" height="3" rx="1.5" fill="#fff" fill-opacity=".55"/></g></svg>`;
+const LOGO = `<img src="icon-512.png" alt="">`;
 
 const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const I = {
@@ -120,7 +120,7 @@ let S = load(KEY, null);
 if (!S || S.v !== 1) S = { v: 1, cards: [], settings: { tilt: false } };
 const persist = () => save(KEY, S);
 const card = id => S.cards.find(c => c.id === id);
-const lock = createLock({ app: 'pocket', name: 'Pocket', logo: LOGO, payLabel: 'Require Face ID to Pay' });
+const lock = createLock({ app: 'pocket', name: 'Wallet', logo: LOGO, payLabel: 'Require Face ID to Pay' });
 
 /* ---------- card face ---------- */
 const textOf = (c, img) => c.text && c.text !== 'auto' ? c.text : img ? 'light' : (PRESETS[c.preset] || PRESETS.midnight).text;
@@ -669,7 +669,7 @@ function openSettings() {
     <div class="group"><label class="row"><span class="label">Card Shine Follows Tilt</span>${switchHTML('data-tilt', S.settings.tilt)}</label></div>
     <div class="group-foot">Moves the light on your cards as you tilt your iPhone.</div>
     <div class="group"><button class="row danger-row" data-reset>Reset Wallet</button></div>
-    <p class="fine">Pocket is a card simulator for fun. Nothing in it is a real payment card.</p>`);
+    <p class="fine">Wallet is a card simulator for fun. Nothing in it is a real payment card.</p>`);
   render();
   s.el.addEventListener('change', async e => {
     if (!e.target.matches('[data-tilt]')) return;

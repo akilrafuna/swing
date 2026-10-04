@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Nebula",
-  "short_name": "Nebula",
+  "name": "Phantom",
+  "short_name": "Phantom",
   "description": "A crypto wallet simulator.",
   "start_url": "./",
   "scope": "./",
